@@ -39,6 +39,10 @@ text.strip.gsub(/\s+/, " ").gsub(/"/, "").gsub(/,/, "").scan(/https?:\/\/[\S]+/)
 agent = Mechanize.new
 	
   agent.user_agent_alias = 'Mac Safari'
+=begin example for downloading a file with mechanize:
+  agent.pluggable_parser.default = Mechanize::Download
+  agent.get('http://example.com/foo').save('a_file_name')
+=end
 	page = agent.get("http://scholar.google.com")
 	form = agent.page.forms.first
 	form.field_with(:name => "q").value = article
