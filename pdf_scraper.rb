@@ -81,7 +81,8 @@ agent.user_agent_alias = 'Mac Safari'
     #page = agent.get(url)
     page.save( path + page.title.to_s.tr('&%*@()!{}|?', '') + ".pdf") #needs to be replaced with a method
     else
-    agent.get(url).save( path + page.title.to_s.tr('&%*@()!{}|?', '') + ".html")
+    geturl(agent, url)
+    page.save( path + page.title.to_s.tr('&%*@()!{}|?', '') + ".html")
    end
   end #url loop
 =begin
