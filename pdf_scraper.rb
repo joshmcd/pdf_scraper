@@ -7,7 +7,18 @@ require 'mechanize'
 require 'watir-webdriver'
 puts 'What Instructor should we use? (Name is case-sensitive) '
 inst = gets.chomp.to_s
-path = 'C:/Users/jmcdon39/Desktop/'
+
+puts 'What Operating System are you on ? "w" for windows, "u" for osx/linux'
+os = gets.chomp.to_s
+case os
+  when 'w'
+    path = 'C:/Users/jmcdon39/Desktop/' #according to SO you can use %HOMEPATH% as an equivalent to ~, %HOMEPATH%/Desktop/ ?
+  when 'u'
+    path = '~/Desktop/'
+  else
+    puts 'Answer must be w or u'
+end
+
 profile = Selenium::WebDriver::Firefox::Profile.new
 profile['browser.download.dir'] = path
 profile['browser.link.open_newwindow'] = 3
