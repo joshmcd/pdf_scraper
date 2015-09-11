@@ -99,7 +99,12 @@ articles.each do |article|
 	form.field_with(:name => "q").value = article
   newbutton = form.button_with(:name => "btnG")
   page = agent.submit(form, newbutton)
-  dbpage = page.links_with(:text => /PDF/)[0].click #this is links[39] 
+  r = page.links_with(:text => /PDF/) #links[39] may be a better bet
+  #maybe it should be a case statement
+  unless r == nil
+    dbpage = page.links_with(:text => /PDF/)[0].click 
+  end
+  
   source = dbpage.uri.to_s
     if source.to_s.include?("jstor")
       #this is where we're gonna have to use watir sadly, since all of them have js popups
