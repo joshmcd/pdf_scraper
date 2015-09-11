@@ -1,28 +1,13 @@
 #!/usr/bin/ruby
 
+
+# So the easiest way to deal with encoding issues seems to be just cutting/pasting all the text from pdf
+#this requires that you ctrl-f to replace weird quotes, but ends up being faster than messing with it in Ruby, so far
 #require 'pdf-reader' might try docsplit instead
 #require 'docsplit'
 #require 'uri'
 require 'mechanize'
 require 'watir-webdriver'
-puts 'What Instructor should we use? (Name is case-sensitive) '
-inst = gets.chomp.to_s
-
-puts 'What Operating System are you on ? "w" for windows, "u" for osx/linux'
-os = gets.chomp.to_s
-case os
-  when 'w'
-    path = 'C:/Users/jmcdon39/Desktop/' #according to SO you can use %HOMEPATH% as an equivalent to ~, %HOMEPATH%/Desktop/ ?
-  when 'u'
-    path = '~/Desktop/'
-  else
-    puts 'Answer must be w or u'
-end
-
-profile = Selenium::WebDriver::Firefox::Profile.new
-profile['browser.download.dir'] = path
-profile['browser.link.open_newwindow'] = 3
-
 def extract_quotes(text_string)
   text_string.gsub(/[^[:print:]]/,'').gsub(/\s\s+/, ' ').scan(/"(.*?)"/)
 end
@@ -36,15 +21,40 @@ def geturl(a, b)
     page = a.get(b)
     rescue Exception => e
     case e.message
-        when /404/ then puts '404!'
-        when /500/ then puts '500!'
-        else puts 'IDK!'
+        when /404/ then log.puts '404!'
+        when /500/ then log.puts '500!'
+        else log.puts 'IDK!'
     end
+   end
 end
-    
-# So the easiest way to deal with encoding issues seems to be just cutting/pasting all the text from pdf
-#this requires that you ctrl-f to replace weird quotes, but ends up being faster than messing with it in Ruby, so far
-#f = path + inst + ".pdf"
+
+#the above is bad practice according to http://daniel.fone.net.nz/blog/2013/05/28/why-you-should-never-rescue-exception-in-ruby/
+
+puts 'What Instructor should we use? (Name is case-sensitive) '
+inst = gets.chomp.to_s
+
+puts 'What Operating System are you on ? "w" for windows, "u" for osx/linux'
+os = gets.chomp.to_s
+case os
+  when 'w' 
+    path = 'C:/Users/jmcdon39/Desktop/' + inst + '/'#according to SO you can use %HOMEPATH% as an equivalent to ~, %HOMEPATH%/Desktop/ ? nope.
+  when 'u' 
+    path = '~/Desktop/' + inst + '/'
+  else 
+  puts 'Answer must be w or u '
+end
+
+unless
+    File.exist?(path)
+    Dir.mkdir(path)
+end
+log = path + 'log.txt'
+log = File.open(log, 'w+')
+
+profile = Selenium::WebDriver::Firefox::Profile.new
+profile['browser.download.dir'] = path
+profile['browser.link.open_newwindow'] = 3
+
 g = path + inst + ".txt"
 text = File.read(g)
 articles = []
@@ -59,27 +69,6 @@ text.scan(/https?:\/\/[\S]+/).each { |i| urls << i }
 #end
 #file.close
 
-=begin - there's a better way: text = File.read(path)
-list = File.open( g, "w+" )
-text = list.readlines
-text = File.read(g)
-text.gsub($fancyDoubleQuotes, '"')
-text.strip.gsub(/\s+/, "").gsub(/"/, "").gsub(/,/, "").scan(/https?:\/\/[\S]+/) #gets the links, but they still break at newlines
-#here we have to extract the articles and URLs from the pdf. 
-#again there's the problem of multiple kinds of quote character: “””" etc.
-# there's the unicode bullet: \u2022
-# the right double-quote: \u201D
-#so you can just do .gsub(/\u201D/, '"').gsub(/\u201C/, '"')
-# and left double-quote: \u201C
-#URL regex: /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/
-#clean everything up: .strip.gsub(/\s+/, " ")
-# so article.to_s.strip.gsub(/\s+/, " ").scan(/https?:\/\/[\S]+/) works, once you have the text. The regex needs to stop at a comma or " though
-#.to_s.strip.gsub(/\s+/, " ").gsub(/"/, "").gsub(/,/, "").scan(/https?:\/\/[\S]+/) will also remove the trailing commas.
-#.gsub!(/\n+/, "") gets rid of all newlines
-.gsub(/\s\s+/, ' ') turns all spaces to single space.
-.gsub(/[^[:print:]]/,'').gsub(/\s\s+/, ' ').scan(/"(.*?)"/) gets rid of all non-printing characters and pulls everything between quotes
-=end
-
 agent = Mechanize.new
 agent.user_agent_alias = 'Mac Safari'
 # downloading a file with mechanize:
@@ -88,15 +77,21 @@ agent.user_agent_alias = 'Mac Safari'
   urls.each do |url|
    if 
     url.to_s.include?('pdf')
-    geturl(agent, url)
+    page = geturl(agent, url)
     #page = agent.get(url)
-    page.save( path + page.title.to_s.tr('&%*@()!{}|?', '') + ".pdf") #needs to be replaced with a method
+    unless page == nil
+    page.save( path + filename_sanitize(page.title) + ".pdf") 
+    log.puts page.title + 'success'
+    end
     else
-    geturl(agent, url)
-    page.save( path + page.title.to_s.tr('&%*@()!{}|?', '') + ".html")
+    page = geturl(agent, url)
+    unless page == nil
+    page.save( path + filename_sanitize(page.title) + ".html")
+    log.puts page.title + 'success'
+    end
    end
-  end #url loop
-=begin
+  end #url loop - works to here!
+
 browser = Watir::Browser.new :firefox, :profile => profile
 articles.each do |article|
 	page = agent.get("http://scholar.google.com")
@@ -127,8 +122,9 @@ articles.each do |article|
       newname = path + title + ".pdf"
       browser.windows[1].close
     else 
-      break
+      log.puts dbpage.to_s + 'failed for some reason, probably because it\'s not proquest or jstor' 
+      #break
   #etcetc.
     end # if loop
   end #articles loop
-=end
+
